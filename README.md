@@ -179,7 +179,17 @@ assignment chatbot/
 
 ## 🚀 Deployment
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
+This project is optimized for **Render** deployment. See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) for detailed step-by-step instructions.
+
+### Quick Render Deployment:
+1. **Sign up at [render.com](https://render.com)**
+2. **Connect your GitHub repository**
+3. **Deploy backend** (root directory: `backend`)
+4. **Deploy frontend** (root directory: `frontend`)
+5. **Set environment variables** in Render dashboard
+6. **Test your live application**
+
+For detailed instructions, see [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md).
 
 ## 📊 Performance
 

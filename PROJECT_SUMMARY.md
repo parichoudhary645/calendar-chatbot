@@ -247,6 +247,18 @@ ANTHROPIC_API_KEY=your_anthropic_api_key
 - Best practices suggestions
 - Usage guidance
 
+## 🚀 Deployment
+
+### Render Platform (Recommended)
+This project is optimized for **Render** deployment:
+- **Free Tier**: 3 web services
+- **Automatic Deployments**: From GitHub repository
+- **Easy Setup**: Web-based configuration
+- **SSL/HTTPS**: Automatic certificates
+- **Custom Domains**: Supported
+
+See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) for detailed deployment instructions.
+
 ## 🔮 Future Enhancements
 
 ### Potential Improvements

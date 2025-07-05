@@ -24,21 +24,22 @@ Use this checklist to ensure your Calendar AI Assistant is properly deployed and
 
 ## 🔧 Deployment Steps
 
-### Step 1: Install Railway CLI
-```bash
-npm install -g @railway/cli
-railway login
-```
+### Step 1: Create Render Account
+- [ ] Sign up at [render.com](https://render.com)
+- [ ] Verify email address
 
 ### Step 2: Deploy Backend
-```bash
-cd backend
-railway init --name calendar-ai-backend
-railway up
-```
+- [ ] Go to Render Dashboard → "New +" → "Web Service"
+- [ ] Connect your GitHub repository
+- [ ] Configure:
+  - Name: `calendar-ai-backend`
+  - Root Directory: `backend`
+  - Build Command: `pip install -r requirements.txt`
+  - Start Command: `python main.py`
+- [ ] Click "Create Web Service"
 
 ### Step 3: Configure Backend Environment Variables
-In Railway Dashboard → calendar-ai-backend → Variables:
+In Render Dashboard → calendar-ai-backend → Environment:
 
 - [ ] `GROQ_API_KEY` = your_groq_api_key_here
 - [ ] `GOOGLE_API_KEY` = your_gemini_api_key_here
@@ -47,18 +48,21 @@ In Railway Dashboard → calendar-ai-backend → Variables:
 - [ ] `SERVICE_ACCOUNT_JSON` = entire content of service_account.json file
 
 ### Step 4: Get Backend URL
-- [ ] Go to Railway Dashboard → calendar-ai-backend → Settings
-- [ ] Copy the Domain URL (e.g., `https://calendar-ai-backend-production.up.railway.app`)
+- [ ] Wait for deployment to complete
+- [ ] Copy the URL (e.g., `https://calendar-ai-backend.onrender.com`)
 
 ### Step 5: Deploy Frontend
-```bash
-cd ../frontend
-railway init --name calendar-ai-frontend
-railway up
-```
+- [ ] Go to Render Dashboard → "New +" → "Web Service"
+- [ ] Connect the same GitHub repository
+- [ ] Configure:
+  - Name: `calendar-ai-frontend`
+  - Root Directory: `frontend`
+  - Build Command: `pip install -r requirements.txt`
+  - Start Command: `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`
+- [ ] Click "Create Web Service"
 
 ### Step 6: Configure Frontend Environment Variables
-In Railway Dashboard → calendar-ai-frontend → Variables:
+In Render Dashboard → calendar-ai-frontend → Environment:
 
 - [ ] `BACKEND_URL` = your_backend_url_from_step_4
 
@@ -84,13 +88,13 @@ In Railway Dashboard → calendar-ai-frontend → Variables:
 ## 🔍 Troubleshooting Checklist
 
 ### Backend Issues
-- [ ] Check Railway logs: `railway logs --service calendar-ai-backend`
+- [ ] Check Render logs: Go to service → Logs tab
 - [ ] Verify environment variables are set correctly
 - [ ] Check `SERVICE_ACCOUNT_JSON` contains valid JSON
 - [ ] Verify API keys are valid and have credits
 
 ### Frontend Issues
-- [ ] Check Railway logs: `railway logs --service calendar-ai-frontend`
+- [ ] Check Render logs: Go to service → Logs tab
 - [ ] Verify `BACKEND_URL` is set correctly
 - [ ] Test backend health endpoint manually
 - [ ] Check CORS configuration
@@ -144,10 +148,10 @@ Your deployment is successful when:
 
 ## 📞 Support Resources
 
-- [Railway Documentation](https://docs.railway.app)
-- [Railway Discord](https://discord.gg/railway)
+- [Render Documentation](https://render.com/docs)
+- [Render Status](https://status.render.com)
 - [Project Documentation](PROJECT_SUMMARY.md)
-- [Deployment Guide](RAILWAY_DEPLOYMENT.md)
+- [Deployment Guide](RENDER_DEPLOYMENT.md)
 
 ---
 
