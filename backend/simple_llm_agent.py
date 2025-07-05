@@ -1,29 +1,30 @@
 """
 Simple LLM Calendar Agent
-A simplified agent that uses LLMs for natural language understanding without complex Langchain dependencies
+A simplified agent that uses direct LLM API calls without Langchain dependencies
 """
 
 import os
 import re
+import json
+import requests
 from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 from calendar_utils import CalendarManager
 
 class SimpleLLMAgent:
-    """Simple calendar agent using LLMs for natural language understanding"""
+    """Simple calendar agent using direct LLM API calls for natural language understanding"""
     
     def __init__(self, service_account_file: str = "service_account.json"):
         """Initialize the simple LLM agent"""
         # Load environment variables
         load_dotenv()
         
-        # Check if service account JSON is provided via environment variable (for Railway)
+        # Check if service account JSON is provided via environment variable (for Render)
         service_account_json = os.getenv("SERVICE_ACCOUNT_JSON")
         if service_account_json:
             # Create temporary file from environment variable
             import tempfile
-            import json
             
             try:
                 # Validate JSON
@@ -44,105 +45,44 @@ class SimpleLLMAgent:
             self.calendar_manager = CalendarManager(service_account_file)
         
         self.conversation_history = []
-        self.llm = self._initialize_llm()
+        self.llm_client = self._initialize_llm()
         
         print("🤖 Simple LLM Calendar Agent initialized successfully!")
-        print(f"✅ Using LLM: {self.llm.__class__.__name__}")
+        print(f"✅ Using LLM: {self.llm_client.__class__.__name__}")
     
     def _initialize_llm(self):
-        """Initialize LLM with preferred order: Groq, Gemini, OpenAI, Anthropic, fallback"""
+        """Initialize LLM client with preferred order: Groq, OpenAI, Anthropic, fallback"""
         print("🔍 Initializing LLM...")
         
-        # Try Groq first (since Gemini is out of quota)
+        # Try Groq first
         groq_api_key = os.getenv("GROQ_API_KEY")
         if groq_api_key:
             print(f"🔑 Found Groq API key: {groq_api_key[:20]}...")
             try:
-                from langchain_groq import ChatGroq
-                llm = ChatGroq(
-                    model="llama3-8b-8192",
-                    temperature=0.1,
-                    groq_api_key=groq_api_key
-                )
-                print("✅ Groq LLM initialized successfully!")
-                return llm
+                return GroqClient(groq_api_key)
             except Exception as e:
                 print(f"⚠️ Groq initialization failed: {e}")
-        else:
-            print("❌ No Groq API key found")
-        
-        # Try Gemini (Google) second
-        gemini_api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-        if gemini_api_key:
-            print(f"🔑 Found Gemini API key: {gemini_api_key[:20]}...")
-            try:
-                from langchain_google_genai import ChatGoogleGenerativeAI
-                llm = ChatGoogleGenerativeAI(
-                    model="gemini-1.5-pro",
-                    google_api_key=gemini_api_key
-                )
-                print("✅ Gemini LLM initialized successfully!")
-                return llm
-            except Exception as e:
-                print(f"⚠️ Gemini initialization failed: {e}")
-        else:
-            print("❌ No Gemini API key found")
         
         # Try OpenAI
         openai_api_key = os.getenv("OPENAI_API_KEY")
         if openai_api_key:
             print(f"🔑 Found OpenAI API key: {openai_api_key[:20]}...")
             try:
-                from langchain_openai import ChatOpenAI
-                llm = ChatOpenAI(
-                    model="gpt-3.5-turbo",
-                    temperature=0.1,
-                    openai_api_key=openai_api_key
-                )
-                print("✅ OpenAI LLM initialized successfully!")
-                return llm
+                return OpenAIClient(openai_api_key)
             except Exception as e:
                 print(f"⚠️ OpenAI initialization failed: {e}")
-        else:
-            print("❌ No OpenAI API key found")
         
         # Try Anthropic
         anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
         if anthropic_api_key:
             print(f"🔑 Found Anthropic API key: {anthropic_api_key[:20]}...")
             try:
-                from langchain_community.llms import Anthropic
-                llm = Anthropic(
-                    model="claude-3-sonnet-20240229",
-                    temperature=0.1,
-                    anthropic_api_key=anthropic_api_key
-                )
-                print("✅ Anthropic LLM initialized successfully!")
-                return llm
+                return AnthropicClient(anthropic_api_key)
             except Exception as e:
                 print(f"⚠️ Anthropic initialization failed: {e}")
-        else:
-            print("❌ No Anthropic API key found")
         
         # Fallback to a simple mock LLM
         print("⚠️ No LLM API keys found. Using fallback mode.")
-        return self._create_fallback_llm()
-    
-    def _create_fallback_llm(self):
-        """Create a fallback LLM when no API keys are available"""
-        class FallbackLLM:
-            def __call__(self, prompt: str) -> str:
-                # Simple rule-based responses
-                prompt_lower = prompt.lower()
-                if "book" in prompt_lower or "schedule" in prompt_lower:
-                    return "I can help you book a meeting. Please provide the date, time, and title."
-                elif "schedule" in prompt_lower or "events" in prompt_lower:
-                    return "I can show you your schedule. Please specify which date."
-                elif "available" in prompt_lower:
-                    return "I can check availability. Please specify the date and time."
-                else:
-                    return "I'm here to help with your calendar. You can ask me to book meetings, check schedules, or find available times."
-        
         return FallbackLLM()
     
     def _extract_booking_info(self, user_message: str) -> Dict[str, str]:
@@ -161,21 +101,13 @@ class SimpleLLMAgent:
             """
             
             # Get LLM response
-            response = self.llm.invoke(prompt)
-            
-            # Handle different response types
-            if hasattr(response, 'content'):
-                response_text = response.content
-            elif isinstance(response, str):
-                response_text = response
-            else:
-                response_text = str(response)
+            response = self.llm_client.generate(prompt)
             
             # Parse the response
             info = {"date": None, "time": None, "title": None}
             
-            # Simple parsing - you could make this more sophisticated
-            lines = response_text.strip().split('\n')
+            # Simple parsing
+            lines = response.strip().split('\n')
             for line in lines:
                 if 'date:' in line.lower():
                     info['date'] = line.split(':', 1)[1].strip()
@@ -198,276 +130,317 @@ class SimpleLLMAgent:
             
             Choose one of:
             - book_meeting: User wants to book/schedule a NEW meeting (e.g., "book a meeting", "schedule a call")
-            - check_availability: User wants to check if a time is available (e.g., "is 3pm free", "check availability")
-            - get_schedule: User wants to see their EXISTING schedule/events (e.g., "what's my schedule", "show my events")
-            - general_chat: General conversation
+            - check_schedule: User wants to see their schedule/events (e.g., "what's my schedule", "show my events")
+            - check_availability: User wants to check if a time is available (e.g., "is 3pm available", "check availability")
+            - general_chat: General conversation or questions
             
-            Return only the intent, nothing else.
+            Return only the intent category, nothing else.
             """
             
-            response = self.llm.invoke(prompt)
+            response = self.llm_client.generate(prompt)
+            intent = response.strip().lower()
             
-            # Handle different response types
-            if hasattr(response, 'content'):
-                response_text = response.content
-            elif isinstance(response, str):
-                response_text = response
-            else:
-                response_text = str(response)
-            
-            intent = response_text.strip().lower()
-            print(f"🔍 LLM returned intent: '{intent}'")
-            
-            # Map to our intents - be more specific about schedule queries
-            if "book" in intent or ("schedule" in intent and "meeting" in intent):
+            # Map to our intent categories
+            if "book" in intent or "schedule" in intent:
                 return "book_meeting"
-            elif "available" in intent or "free" in intent:
+            elif "schedule" in intent or "events" in intent or "what" in intent:
+                return "check_schedule"
+            elif "available" in intent or "check" in intent:
                 return "check_availability"
-            elif "what's" in intent or "show" in intent or ("schedule" in intent and "my" in intent):
-                return "get_schedule"
             else:
-                # Fallback: check the original user message for keywords
-                user_lower = user_message.lower()
-                if "schedule" in user_lower and ("what" in user_lower or "show" in user_lower or "my" in user_lower):
-                    return "get_schedule"
-                elif "book" in user_lower or "schedule" in user_lower:
-                    return "book_meeting"
-                else:
-                    return "general_chat"
+                return "general_chat"
                 
         except Exception as e:
             print(f"Error understanding intent: {e}")
-            return "general_chat"
-    
+            # Fallback to simple keyword matching
+            user_lower = user_message.lower()
+            if "book" in user_lower or "schedule" in user_lower:
+                return "book_meeting"
+            elif "schedule" in user_lower or "events" in user_lower or "what" in user_lower:
+                return "check_schedule"
+            elif "available" in user_lower:
+                return "check_availability"
+            else:
+                return "general_chat"
+
     def chat(self, user_message: str) -> str:
-        """Process a user message through the simple LLM agent"""
+        """Main chat method that handles user messages"""
         try:
             # Add to conversation history
-            self.conversation_history.append({"role": "user", "content": user_message})
+            self.conversation_history.append({"user": user_message, "timestamp": datetime.now()})
             
-            # Understand intent
+            # Understand user intent
             intent = self._understand_intent(user_message)
-            print(f"🔍 Detected intent: {intent} for message: '{user_message}'")
+            print(f"🎯 Detected intent: {intent}")
             
-            # Handle based on intent
+            # Route to appropriate handler
             if intent == "book_meeting":
-                response = self._handle_booking(user_message)
+                return self._handle_booking(user_message)
+            elif intent == "check_schedule":
+                return self._handle_schedule(user_message)
             elif intent == "check_availability":
-                response = self._handle_availability(user_message)
-            elif intent == "get_schedule":
-                response = self._handle_schedule(user_message)
+                return self._handle_availability(user_message)
             else:
-                response = self._handle_general_chat(user_message)
-            
-            # Add response to history
-            self.conversation_history.append({"role": "assistant", "content": response})
-            
-            return response
-            
+                return self._handle_general_chat(user_message)
+                
         except Exception as e:
-            error_message = f"❌ Sorry, I encountered an error: {str(e)}"
-            print(f"Agent error: {e}")
-            return error_message
-    
+            print(f"Error in chat: {e}")
+            return "I'm sorry, I encountered an error. Please try again."
+
     def _handle_booking(self, user_message: str) -> str:
-        """Handle booking requests"""
+        """Handle meeting booking requests"""
         try:
-            # Extract booking info
-            info = self._extract_booking_info(user_message)
-            
-            # Check if we have enough information
-            if not info['date'] or not info['time'] or not info['title']:
-                return "I'd be happy to help you book a meeting! Please provide the date, time, and title of the meeting."
+            # Extract booking information
+            booking_info = self._extract_booking_info(user_message)
             
             # Parse date and time
-            if info['date'].lower() == "tomorrow":
-                target_date = datetime.now() + timedelta(days=1)
-            elif info['date'].lower() == "today":
-                target_date = datetime.now()
-            else:
-                target_date = self.calendar_manager.parse_date_time(info['date'])
+            date_str = booking_info.get('date')
+            time_str = booking_info.get('time')
+            title = booking_info.get('title') or "Meeting"
             
-            time_obj = self.calendar_manager.parse_date_time("today", info['time'])
-            start_time = target_date.replace(hour=time_obj.hour, minute=time_obj.minute)
-            end_time = start_time + timedelta(hours=1)
+            if not date_str or not time_str:
+                return "I need more information to book your meeting. Please provide a date and time."
+            
+            # Parse the date
+            parsed_date = self.calendar_manager.parse_date_time(f"{date_str} {time_str}")
+            if not parsed_date:
+                return "I couldn't understand the date or time. Please try again with a clearer format."
             
             # Check availability
-            if not self.calendar_manager.check_availability(start_time, end_time):
-                return f"Sorry, {info['time']} on {info['date']} is not available. Please choose another time."
+            if not self.calendar_manager.check_availability(parsed_date):
+                return f"{time_str} on {date_str} is not available. Please choose another time."
             
             # Create the event
-            created_event = self.calendar_manager.create_event(
-                summary=info['title'],
-                start_time=start_time,
-                end_time=end_time,
-                description=f"Meeting booked via AI assistant"
+            event = self.calendar_manager.create_event(
+                title=title,
+                start_time=parsed_date,
+                end_time=parsed_date + timedelta(hours=1)
             )
             
-            return f"✅ Successfully booked '{info['title']}' for {info['date']} at {info['time']}. The meeting has been added to your Google Calendar."
-            
+            if event:
+                return f"✅ Successfully booked '{title}' for {date_str} at {time_str}. The meeting has been added to your Google Calendar."
+            else:
+                return "❌ Failed to create the meeting. Please try again."
+                
         except Exception as e:
-            return f"Error booking meeting: {str(e)}"
-    
+            print(f"Error in booking: {e}")
+            return "I encountered an error while booking your meeting. Please try again."
+
     def _handle_availability(self, user_message: str) -> str:
-        """Handle availability check requests"""
+        """Handle availability checking requests"""
         try:
-            info = self._extract_booking_info(user_message)
+            # Extract date and time from message
+            date_str = self._extract_date_from_message(user_message)
+            time_str = self._extract_time_from_message(user_message)
             
-            if not info['date']:
-                return "I can check availability for you. Please specify which date you'd like to check."
+            if not date_str or not time_str:
+                return "Please specify a date and time to check availability."
             
-            # Parse date
-            if info['date'].lower() == "tomorrow":
-                target_date = datetime.now() + timedelta(days=1)
-            elif info['date'].lower() == "today":
-                target_date = datetime.now()
+            # Parse the date and time
+            parsed_date = self.calendar_manager.parse_date_time(f"{date_str} {time_str}")
+            if not parsed_date:
+                return "I couldn't understand the date or time format. Please try again."
+            
+            # Check availability
+            is_available = self.calendar_manager.check_availability(parsed_date)
+            
+            if is_available:
+                return f"✅ {time_str} on {date_str} is available!"
             else:
-                target_date = self.calendar_manager.parse_date_time(info['date'])
-            
-            if info['time']:
-                # Check specific time
-                time_obj = self.calendar_manager.parse_date_time("today", info['time'])
-                start_time = target_date.replace(hour=time_obj.hour, minute=time_obj.minute)
-                end_time = start_time + timedelta(hours=1)
-                
-                is_available = self.calendar_manager.check_availability(start_time, end_time)
-                return f"{info['time']} on {info['date']} is {'available' if is_available else 'not available'}"
-            else:
-                # Get available slots for the day
-                available_slots = self.calendar_manager.get_available_slots(target_date)
-                if not available_slots:
-                    return f"No available slots found for {info['date']}"
-                
-                slot_list = []
-                for start, end in available_slots[:6]:
-                    slot_list.append(f"• {self.calendar_manager.format_time_slot(start, end)}")
-                
-                return f"Available slots for {info['date']}:\n" + "\n".join(slot_list)
+                return f"❌ {time_str} on {date_str} is not available. Please choose another time."
                 
         except Exception as e:
-            return f"Error checking availability: {str(e)}"
-    
+            print(f"Error checking availability: {e}")
+            return "I encountered an error while checking availability. Please try again."
+
     def _extract_date_from_message(self, user_message: str) -> str:
-        """Extract date information from user message for schedule queries"""
+        """Extract date from user message"""
+        user_lower = user_message.lower()
+        
+        # Simple date extraction
+        if "today" in user_lower:
+            return "today"
+        elif "tomorrow" in user_lower:
+            return "tomorrow"
+        elif "next week" in user_lower:
+            return "next week"
+        else:
+            # Try to extract date using LLM
+            prompt = f"Extract only the date from this message: '{user_message}'. Return only the date, nothing else."
+            try:
+                response = self.llm_client.generate(prompt)
+                return response.strip()
+            except:
+                return None
+
+    def _extract_time_from_message(self, user_message: str) -> str:
+        """Extract time from user message"""
+        # Simple time extraction
+        time_pattern = r'\b(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b'
+        matches = re.findall(time_pattern, user_message.lower())
+        if matches:
+            return matches[0]
+        
+        # Try LLM extraction
+        prompt = f"Extract only the time from this message: '{user_message}'. Return only the time, nothing else."
         try:
-            user_lower = user_message.lower()
-            
-            if "today" in user_lower:
-                return "today"
-            elif "tomorrow" in user_lower:
-                return "tomorrow"
-            elif "yesterday" in user_lower:
-                return "yesterday"
-            else:
-                # Try to extract other date formats
-                prompt = f"""
-                Extract the date from this message: "{user_message}"
-                
-                Return only the date in one of these formats:
-                - today
-                - tomorrow
-                - yesterday
-                - a specific date like "2024-01-15" or "next Monday"
-                
-                If no date is found, return "today" as default.
-                """
-                
-                response = self.llm.invoke(prompt)
-                
-                # Handle different response types
-                if hasattr(response, 'content'):
-                    response_text = response.content
-                elif isinstance(response, str):
-                    response_text = response
-                else:
-                    response_text = str(response)
-                
-                return response_text.strip().lower()
-                
-        except Exception as e:
-            print(f"Error extracting date: {e}")
-            return "today"  # Default to today
-    
+            response = self.llm_client.generate(prompt)
+            return response.strip()
+        except:
+            return None
+
     def _handle_schedule(self, user_message: str) -> str:
-        """Handle schedule requests"""
+        """Handle schedule checking requests"""
         try:
             # Extract date from message
             date_str = self._extract_date_from_message(user_message)
             
             if not date_str:
-                return "I can show you your schedule. Please specify which date you'd like to see."
+                return "Please specify which date you'd like to see your schedule for."
             
-            # Parse date
-            if date_str.lower() == "tomorrow":
-                target_date = datetime.now() + timedelta(days=1)
-                day_name = "tomorrow"
-            elif date_str.lower() == "today":
-                target_date = datetime.now()
-                day_name = "today"
-            elif date_str.lower() == "yesterday":
-                target_date = datetime.now() - timedelta(days=1)
-                day_name = "yesterday"
-            else:
-                target_date = self.calendar_manager.parse_date_time(date_str)
-                day_name = date_str
+            # Parse the date
+            parsed_date = self.calendar_manager.parse_date_time(date_str)
+            if not parsed_date:
+                return "I couldn't understand the date format. Please try again."
             
-            # Get events
-            events = self.calendar_manager.get_events_for_date(target_date)
+            # Get events for the date
+            events = self.calendar_manager.get_events_for_date(parsed_date)
             
             if not events:
-                return f"📅 {day_name.title()} is wide open! No events scheduled."
+                return f"📅 You have no events scheduled for {date_str}."
             
-            event_list = []
-            for event in events[:5]:  # Show first 5 events
-                start = event['start'].get('dateTime', event['start'].get('date'))
-                if 'dateTime' in event['start']:
-                    start_time = datetime.fromisoformat(start.replace('Z', '+00:00'))
-                    time_str = start_time.strftime("%I:%M %p")
-                    event_list.append(f"• {time_str}: {event['summary']}")
+            # Format the response
+            response = f"📅 Here's what's on your schedule for {date_str}:\n"
+            for event in events:
+                start_time = event['start'].get('dateTime', event['start'].get('date'))
+                if 'T' in start_time:
+                    time = datetime.fromisoformat(start_time.replace('Z', '+00:00')).strftime('%I:%M %p')
                 else:
-                    event_list.append(f"• All day: {event['summary']}")
+                    time = "All day"
+                response += f"• {time}: {event['summary']}\n"
             
-            events_text = "\n".join(event_list)
-            return f"📅 Here's what's on your schedule {day_name}:\n{events_text}"
+            return response
             
         except Exception as e:
-            return f"Error getting schedule: {str(e)}"
-    
+            print(f"Error checking schedule: {e}")
+            return "I encountered an error while checking your schedule. Please try again."
+
     def _handle_general_chat(self, user_message: str) -> str:
-        """Handle general conversation"""
+        """Handle general chat and questions"""
         try:
             prompt = f"""
             You are a helpful calendar assistant. The user said: "{user_message}"
             
-            Provide a friendly, helpful response about calendar management. You can help with:
-            - Booking meetings
-            - Checking availability
-            - Showing schedules
-            - General calendar questions
-            
-            Keep your response concise and helpful.
+            Provide a helpful response about calendar management, scheduling, or general assistance.
+            Keep it concise and friendly.
             """
             
-            response = self.llm.invoke(prompt)
-            
-            # Handle different response types
-            if hasattr(response, 'content'):
-                response_text = response.content
-            elif isinstance(response, str):
-                response_text = response
-            else:
-                response_text = str(response)
-            
-            return response_text.strip()
+            response = self.llm_client.generate(prompt)
+            return response
             
         except Exception as e:
-            return "I'm here to help with your calendar! You can ask me to book meetings, check schedules, or find available times."
-    
+            print(f"Error in general chat: {e}")
+            return "I'm here to help with your calendar! You can ask me to book meetings, check your schedule, or find available times."
+
     def get_conversation_history(self) -> List[Dict[str, str]]:
         """Get conversation history"""
         return self.conversation_history
-    
+
     def reset_conversation(self):
-        """Reset the conversation history"""
+        """Reset conversation history"""
         self.conversation_history = []
-        return "✅ Conversation history cleared!" 
+
+# LLM Client Classes
+class GroqClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.groq.com/openai/v1/chat/completions"
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+    
+    def generate(self, prompt: str) -> str:
+        try:
+            data = {
+                "model": "llama3-8b-8192",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "max_tokens": 500
+            }
+            
+            response = requests.post(self.base_url, headers=self.headers, json=data)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
+        except Exception as e:
+            print(f"Groq API error: {e}")
+            return "I'm having trouble processing your request right now."
+
+class OpenAIClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.openai.com/v1/chat/completions"
+        self.headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+    
+    def generate(self, prompt: str) -> str:
+        try:
+            data = {
+                "model": "gpt-3.5-turbo",
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.1,
+                "max_tokens": 500
+            }
+            
+            response = requests.post(self.base_url, headers=self.headers, json=data)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
+        except Exception as e:
+            print(f"OpenAI API error: {e}")
+            return "I'm having trouble processing your request right now."
+
+class AnthropicClient:
+    def __init__(self, api_key: str):
+        self.api_key = api_key
+        self.base_url = "https://api.anthropic.com/v1/messages"
+        self.headers = {
+            "x-api-key": api_key,
+            "Content-Type": "application/json",
+            "anthropic-version": "2023-06-01"
+        }
+    
+    def generate(self, prompt: str) -> str:
+        try:
+            data = {
+                "model": "claude-3-sonnet-20240229",
+                "max_tokens": 500,
+                "messages": [{"role": "user", "content": prompt}]
+            }
+            
+            response = requests.post(self.base_url, headers=self.headers, json=data)
+            response.raise_for_status()
+            
+            result = response.json()
+            return result["content"][0]["text"]
+        except Exception as e:
+            print(f"Anthropic API error: {e}")
+            return "I'm having trouble processing your request right now."
+
+class FallbackLLM:
+    def generate(self, prompt: str) -> str:
+        # Simple rule-based responses
+        prompt_lower = prompt.lower()
+        if "book" in prompt_lower or "schedule" in prompt_lower:
+            return "I can help you book a meeting. Please provide the date, time, and title."
+        elif "schedule" in prompt_lower or "events" in prompt_lower:
+            return "I can show you your schedule. Please specify which date."
+        elif "available" in prompt_lower:
+            return "I can check availability. Please specify the date and time."
+        else:
+            return "I'm here to help with your calendar. You can ask me to book meetings, check schedules, or find available times." 

@@ -9,14 +9,4 @@ pydantic==2.5.0
 python-multipart==0.0.6
 pytz==2023.3
 python-dateutil==2.8.2
-
-# Core LLM dependencies (minimal set)
-openai>=1.10.0
-groq>=0.4.2
-anthropic>=0.7.0
-google-generativeai>=0.3.0
-
-# Essential Langchain packages only
-langchain>=0.1.0
-langchain-openai>=0.0.5
-langchain-groq>=0.3.5 
+requests>=2.31.0 
