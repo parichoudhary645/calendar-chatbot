@@ -62,6 +62,7 @@ temp/
 
 # Service account (keep the example, ignore the real one)
 service_account.json
+backend/service_account.json
 !backend/service_account.json.example
 
 # API keys
