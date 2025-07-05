@@ -6,8 +6,7 @@ This is the main API server that handles chat requests
 import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import uvicorn
 from dotenv import load_dotenv
 
@@ -31,19 +30,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# Pydantic models for request/response
-class ChatRequest(BaseModel):
-    message: str
-    user_id: Optional[str] = "default_user"
-
-class ChatResponse(BaseModel):
-    response: str
-    success: bool
-    error: Optional[str] = None
-
-class ConversationHistory(BaseModel):
-    messages: List[dict]
 
 # Global agent instance
 agent = None
@@ -97,30 +83,35 @@ async def health_check():
         "message": "🤖 Calendar agent is ready to help!"
     }
 
-@app.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
+@app.post("/chat")
+async def chat_endpoint(request: Dict[str, Any]):
     """Main chat endpoint - handles user messages"""
     try:
         if agent is None:
             raise HTTPException(status_code=503, detail="Agent not initialized")
         
-        # Process the message through the agent
-        response = agent.chat(request.message)
+        # Extract message from request
+        message = request.get("message", "")
+        if not message:
+            raise HTTPException(status_code=400, detail="Message is required")
         
-        return ChatResponse(
-            response=response,
-            success=True
-        )
+        # Process the message through the agent
+        response = agent.chat(message)
+        
+        return {
+            "response": response,
+            "success": True
+        }
         
     except Exception as e:
         print(f"❌ Error in chat endpoint: {e}")
-        return ChatResponse(
-            response="Sorry, I'm having trouble right now. Please try again!",
-            success=False,
-            error=str(e)
-        )
+        return {
+            "response": "Sorry, I'm having trouble right now. Please try again!",
+            "success": False,
+            "error": str(e)
+        }
 
-@app.get("/conversation-history", response_model=ConversationHistory)
+@app.get("/conversation-history")
 async def get_conversation_history():
     """Get the current conversation history"""
     try:
@@ -129,7 +120,7 @@ async def get_conversation_history():
         
         history = agent.get_conversation_history()
         
-        return ConversationHistory(messages=history)
+        return {"messages": history}
         
     except Exception as e:
         print(f"❌ Error getting conversation history: {e}")
