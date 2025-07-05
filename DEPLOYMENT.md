@@ -1,139 +1,63 @@
-# 🚀 Deployment Guide - Calendar AI Assistant
+# 🚀 Deployment Guide
 
-This guide will help you deploy your Calendar AI Assistant to Railway, a modern cloud platform that makes deployment simple and reliable.
+This guide will help you deploy your Calendar Booking Chatbot to various platforms.
 
 ## 📋 Prerequisites
 
 Before deploying, make sure you have:
+1. ✅ OpenAI API key
+2. ✅ Google Service Account JSON file
+3. ✅ Calendar shared with service account
+4. ✅ All code committed to Git repository
 
-1. ✅ **LLM API Keys** (at least one required):
-   - **GROQ_API_KEY** (primary, recommended)
-   - **GOOGLE_API_KEY** (Gemini, fallback)
-   - **OPENAI_API_KEY** (OpenAI, fallback)
-   - **ANTHROPIC_API_KEY** (Anthropic, fallback)
+## 🎯 Platform Options
 
-2. ✅ **Google Calendar Setup**:
-   - Google Cloud Project with Calendar API enabled
-   - Service Account created and JSON file downloaded
-   - Calendar shared with service account email
-   - `service_account.json` file in the backend directory
+### Option 1: Railway (Recommended - Easiest)
 
-3. ✅ **Git Repository**: All code committed to a Git repository
+Railway is the easiest platform for deployment with automatic scaling and easy environment variable management.
 
-## 🎯 Railway Deployment (Recommended)
+#### Backend Deployment
 
-Railway is the easiest platform for deployment with automatic scaling, easy environment variable management, and excellent developer experience.
+1. **Install Railway CLI**:
+   ```bash
+   npm install -g @railway/cli
+   ```
 
-### Option 1: Automated Deployment (Recommended)
+2. **Login to Railway**:
+   ```bash
+   railway login
+   ```
 
-We've created an automated deployment script that handles everything for you:
+3. **Deploy Backend**:
+   ```bash
+   cd backend
+   railway init
+   railway up
+   ```
 
-```bash
-# Run the deployment script
-./deploy.sh
-```
+4. **Set Environment Variables** in Railway Dashboard:
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - `SERVICE_ACCOUNT_FILE`: Upload your `service_account.json` file
 
-The script will:
-- Install Railway CLI if needed
-- Deploy both backend and frontend
-- Set up environment variables
-- Provide you with the final URLs
+5. **Get Backend URL**: Copy the URL from Railway dashboard (e.g., `https://your-app.railway.app`)
 
-### Option 2: Manual Deployment
+#### Frontend Deployment
 
-If you prefer to deploy manually, follow these steps:
+1. **Update Backend URL** in `frontend/app.py`:
+   ```python
+   BACKEND_URL = "https://your-backend-url.railway.app"
+   ```
 
-#### Step 1: Install Railway CLI
+2. **Deploy Frontend**:
+   ```bash
+   cd frontend
+   railway init
+   railway up
+   ```
 
-```bash
-npm install -g @railway/cli
-railway login
-```
+3. **Get Frontend URL**: Copy the URL from Railway dashboard
 
-#### Step 2: Deploy Backend
-
-```bash
-cd backend
-railway init --name calendar-ai-backend
-railway up
-```
-
-#### Step 3: Configure Backend Environment Variables
-
-Go to your Railway dashboard and set these variables for the backend project:
-
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `GROQ_API_KEY` | Your Groq API key | ✅ Yes |
-| `GOOGLE_API_KEY` | Your Gemini API key | ❌ No (fallback) |
-| `OPENAI_API_KEY` | Your OpenAI API key | ❌ No (fallback) |
-| `ANTHROPIC_API_KEY` | Your Anthropic API key | ❌ No (fallback) |
-
-#### Step 4: Upload Service Account File
-
-1. Go to your Railway backend project dashboard
-2. Navigate to the "Variables" tab
-3. Upload your `service_account.json` file
-
-#### Step 5: Deploy Frontend
-
-```bash
-cd frontend
-railway init --name calendar-ai-frontend
-railway variables set BACKEND_URL="https://your-backend-url.railway.app"
-railway up
-```
-
-#### Step 6: Get Your URLs
-
-After deployment, you'll get:
-- **Backend URL**: `https://your-backend-url.railway.app`
-- **Frontend URL**: `https://your-frontend-url.railway.app`
-
-## 🔧 Environment Variables
-
-### Backend Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `GROQ_API_KEY` | Groq API key (primary LLM) | `gsk_...` |
-| `GOOGLE_API_KEY` | Gemini API key (fallback) | `AIza...` |
-| `OPENAI_API_KEY` | OpenAI API key (fallback) | `sk-...` |
-| `ANTHROPIC_API_KEY` | Anthropic API key (fallback) | `sk-ant-...` |
-
-### Frontend Variables
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `BACKEND_URL` | URL of your deployed backend | `https://your-backend.railway.app` |
-
-## 🌐 Domain Configuration
-
-### Custom Domain (Optional)
-
-1. Go to your Railway project dashboard
-2. Navigate to Settings > Domains
-3. Add your custom domain
-4. Configure DNS records as instructed
-
-### SSL/HTTPS
-
-Railway provides automatic SSL certificates for all deployments.
-
-## 📊 Monitoring & Health Checks
-
-### Health Check Endpoints
-
-- **Backend Health**: `https://your-backend-url.railway.app/health`
-- **Frontend Health**: `https://your-frontend-url.railway.app/`
-
-### Railway Dashboard
-
-Monitor your applications at: https://railway.app/dashboard
-
-## 🚀 Alternative Platforms
-
-### Render
+### Option 2: Render
 
 Render offers free hosting with automatic deployments from Git.
 
@@ -142,27 +66,30 @@ Render offers free hosting with automatic deployments from Git.
 1. **Create New Web Service** on Render
 2. **Connect your Git repository**
 3. **Configure**:
-   - **Name**: `calendar-ai-backend`
+   - **Name**: `calendar-chatbot-backend`
    - **Environment**: `Python 3`
    - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `python main.py`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
-4. **Set Environment Variables** in the dashboard
-5. **Upload** `service_account.json` file
+4. **Set Environment Variables**:
+   - `OPENAI_API_KEY`: Your OpenAI API key
+   - Add `service_account.json` as a file in the dashboard
+
+5. **Deploy** and get your backend URL
 
 #### Frontend Deployment
 
 1. **Create New Web Service** on Render
 2. **Configure**:
-   - **Name**: `calendar-ai-frontend`
+   - **Name**: `calendar-chatbot-frontend`
    - **Environment**: `Python 3`
    - **Build Command**: `pip install -r requirements.txt`
    - **Start Command**: `streamlit run app.py --server.port $PORT --server.address 0.0.0.0`
 
-3. **Set Environment Variables**:
-   - `BACKEND_URL`: Your backend URL
+3. **Update Backend URL** in `frontend/app.py`
+4. **Deploy**
 
-### Fly.io
+### Option 3: Fly.io
 
 Fly.io offers global deployment with Docker containers.
 
@@ -170,7 +97,7 @@ Fly.io offers global deployment with Docker containers.
 
 **Backend Dockerfile** (`backend/Dockerfile`):
 ```dockerfile
-FROM python:3.10-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
@@ -181,12 +108,12 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["python", "main.py"]
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
 **Frontend Dockerfile** (`frontend/Dockerfile`):
 ```dockerfile
-FROM python:3.10-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
@@ -202,120 +129,195 @@ CMD ["streamlit", "run", "app.py", "--server.port", "8501", "--server.address", 
 
 #### Deploy
 
+1. **Install Fly CLI**:
+   ```bash
+   curl -L https://fly.io/install.sh | sh
+   ```
+
+2. **Login to Fly**:
+   ```bash
+   fly auth login
+   ```
+
+3. **Deploy Backend**:
+   ```bash
+   cd backend
+   fly launch
+   fly secrets set OPENAI_API_KEY=your_key_here
+   fly deploy
+   ```
+
+4. **Deploy Frontend**:
+   ```bash
+   cd frontend
+   fly launch
+   fly deploy
+   ```
+
+## 🔧 Environment Variables
+
+### Required Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `OPENAI_API_KEY` | Your OpenAI API key | `sk-...` |
+| `SERVICE_ACCOUNT_FILE` | Path to Google service account JSON | `service_account.json` |
+
+### Platform-Specific Setup
+
+#### Railway
+- Go to your project dashboard
+- Click "Variables" tab
+- Add each variable with its value
+- Upload `service_account.json` as a file
+
+#### Render
+- Go to your service dashboard
+- Click "Environment" tab
+- Add each variable
+- Upload `service_account.json` in the "Files" section
+
+#### Fly.io
 ```bash
-# Install Fly CLI
-curl -L https://fly.io/install.sh | sh
+fly secrets set OPENAI_API_KEY=your_key_here
+# Upload service_account.json to the app
+```
 
-# Login to Fly
-fly auth login
+## 🌐 Domain Configuration
 
-# Deploy Backend
-cd backend
-fly launch
-fly secrets set GROQ_API_KEY=your_key_here
-fly deploy
+### Custom Domain (Optional)
 
-# Deploy Frontend
-cd ../frontend
-fly launch
+1. **Railway**: Go to Settings > Domains
+2. **Render**: Go to Settings > Custom Domains
+3. **Fly.io**: `fly certs add yourdomain.com`
+
+### SSL/HTTPS
+
+All platforms provide automatic SSL certificates.
+
+## 📊 Monitoring
+
+### Health Checks
+
+Your backend includes a health check endpoint:
+- URL: `https://your-backend-url/health`
+- Returns: `{"status": "healthy", "agent_ready": true}`
+
+### Logs
+
+- **Railway**: `railway logs`
+- **Render**: Dashboard > Logs tab
+- **Fly.io**: `fly logs`
+
+## 🔄 Continuous Deployment
+
+### Automatic Deployments
+
+All platforms support automatic deployments from Git:
+1. Connect your GitHub repository
+2. Push changes to trigger deployment
+3. Monitor deployment status
+
+### Manual Deployments
+
+```bash
+# Railway
+railway up
+
+# Render
+# Automatic from Git
+
+# Fly.io
 fly deploy
 ```
 
-## 🔐 Security Best Practices
-
-### API Key Management
-
-- ✅ Use environment variables for all API keys
-- ✅ Never commit API keys to Git
-- ✅ Use Railway's secure variable storage
-- ✅ Rotate API keys regularly
-
-### Google Calendar Security
-
-- ✅ Use service account with minimal permissions
-- ✅ Share only necessary calendars
-- ✅ Monitor API usage and quotas
-
-### Application Security
-
-- ✅ Enable CORS for frontend-backend communication
-- ✅ Validate all user inputs
-- ✅ Implement rate limiting (Railway handles this)
-- ✅ Use HTTPS for all communications
-
-## 📈 Performance Optimization
-
-### Railway Optimizations
-
-- **Auto-scaling**: Railway automatically scales based on traffic
-- **Edge caching**: Automatic CDN distribution
-- **Database**: Railway provides managed databases if needed
-
-### Application Optimizations
-
-- **LLM caching**: Consider implementing response caching
-- **Calendar caching**: Cache calendar data for better performance
-- **Connection pooling**: Optimize database connections
-
 ## 🐛 Troubleshooting
 
-### Common Issues
+### Common Deployment Issues
 
-#### Backend Won't Start
-- Check environment variables are set correctly
-- Verify `service_account.json` is uploaded
-- Check Railway logs for error messages
+1. **Build Failures**:
+   - Check requirements.txt syntax
+   - Verify Python version compatibility
+   - Check for missing dependencies
 
-#### Frontend Can't Connect to Backend
-- Verify `BACKEND_URL` environment variable is set
-- Check backend is running and healthy
-- Test backend URL directly in browser
+2. **Environment Variables**:
+   - Verify all required variables are set
+   - Check variable names (case-sensitive)
+   - Ensure service account file is uploaded
 
-#### LLM API Errors
-- Verify API keys are correct and have sufficient quota
-- Check API provider status pages
-- Review Railway logs for detailed error messages
+3. **Connection Issues**:
+   - Verify backend URL in frontend
+   - Check CORS settings
+   - Test backend health endpoint
 
-#### Google Calendar Errors
-- Verify service account has correct permissions
-- Check calendar is shared with service account email
-- Verify Calendar API is enabled in Google Cloud Console
+4. **Calendar Access**:
+   - Ensure service account has calendar permissions
+   - Verify calendar is shared with service account email
+   - Check Google Cloud project settings
 
-### Getting Help
+### Debug Commands
 
-1. **Check Railway Logs**: Go to your project dashboard and view logs
-2. **Test Locally**: Run the application locally to isolate issues
-3. **Review Documentation**: Check this guide and project documentation
-4. **Community Support**: Railway has excellent community support
+```bash
+# Check backend health
+curl https://your-backend-url/health
 
-## 🎉 Success Metrics
+# Test API endpoint
+curl -X POST https://your-backend-url/chat \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello"}'
 
-### Deployment Checklist
+# View logs
+railway logs  # or platform-specific command
+```
 
-- ✅ Backend deployed and healthy
-- ✅ Frontend deployed and accessible
-- ✅ Environment variables configured
-- ✅ Service account file uploaded
-- ✅ API keys working
-- ✅ Calendar integration functional
-- ✅ Chat interface responsive
+## 📈 Scaling
 
-### Testing Your Deployment
+### Automatic Scaling
 
-1. **Health Check**: Visit `/health` endpoint
-2. **Chat Interface**: Test the main chat functionality
-3. **Calendar Integration**: Try booking a meeting
-4. **Schedule Queries**: Check schedule functionality
-5. **Error Handling**: Test with invalid inputs
+- **Railway**: Automatic based on traffic
+- **Render**: Manual scaling in dashboard
+- **Fly.io**: `fly scale count 2`
+
+### Performance Optimization
+
+1. **Caching**: Implement Redis for session storage
+2. **Database**: Add PostgreSQL for conversation history
+3. **CDN**: Use Cloudflare for static assets
+
+## 🔒 Security
+
+### Best Practices
+
+1. **Environment Variables**: Never commit secrets to Git
+2. **API Keys**: Rotate keys regularly
+3. **Service Account**: Use minimal required permissions
+4. **HTTPS**: Always use HTTPS in production
+
+### Security Headers
+
+Add security headers to your FastAPI app:
+```python
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
+
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["yourdomain.com"])
+```
 
 ## 📞 Support
 
-For deployment issues:
+### Platform Support
 
-1. **Railway Documentation**: https://docs.railway.app/
-2. **Railway Community**: https://community.railway.app/
-3. **Project Issues**: Open an issue in the project repository
+- **Railway**: [Discord](https://discord.gg/railway)
+- **Render**: [Documentation](https://render.com/docs)
+- **Fly.io**: [Community](https://community.fly.io)
+
+### Project Issues
+
+For project-specific issues, check:
+1. README.md troubleshooting section
+2. GitHub issues
+3. Stack Overflow
 
 ---
 
-**Your Calendar AI Assistant is now ready for production use! 🚀** 
+**Happy Deploying! 🚀** 

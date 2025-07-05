@@ -9,11 +9,6 @@ import json
 from datetime import datetime
 import time
 from typing import List, Dict
-import os
-from dotenv import load_dotenv
-
-# Load environment variables
-load_dotenv()
 
 # Page configuration
 st.set_page_config(
@@ -75,7 +70,8 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # Configuration
-BACKEND_URL = os.getenv('BACKEND_URL', 'https://handy-flower-production.up.railway.app')
+import os
+BACKEND_URL = os.getenv("BACKEND_URL", "http://localhost:8000")  # Use environment variable or default to localhost
 
 class ChatInterface:
     """Manages the chat interface and communication with the backend"""

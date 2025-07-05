@@ -18,7 +18,31 @@ class SimpleLLMAgent:
         # Load environment variables
         load_dotenv()
         
-        self.calendar_manager = CalendarManager(service_account_file)
+        # Check if service account JSON is provided via environment variable (for Railway)
+        service_account_json = os.getenv("SERVICE_ACCOUNT_JSON")
+        if service_account_json:
+            # Create temporary file from environment variable
+            import tempfile
+            import json
+            
+            try:
+                # Validate JSON
+                json.loads(service_account_json)
+                
+                # Create temporary file
+                with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+                    f.write(service_account_json)
+                    temp_file = f.name
+                
+                self.calendar_manager = CalendarManager(temp_file)
+                print("✅ Calendar service initialized with environment variable JSON")
+            except Exception as e:
+                print(f"❌ Error with SERVICE_ACCOUNT_JSON: {e}")
+                self.calendar_manager = CalendarManager(service_account_file)
+        else:
+            # Use file-based service account
+            self.calendar_manager = CalendarManager(service_account_file)
+        
         self.conversation_history = []
         self.llm = self._initialize_llm()
         
