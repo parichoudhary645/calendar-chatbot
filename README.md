@@ -12,15 +12,8 @@ A production-ready conversational AI assistant for Google Calendar management, b
 
 ## 🛠️ Tech Stack
 
-### Backend
-- **FastAPI**: High-performance web framework
-- **Groq LLM**: Fast, cost-effective language model (llama3-8b-8192)
-- **Google Calendar API**: Real calendar integration
-- **Langchain**: LLM orchestration framework
-
-### Frontend
-- **Streamlit**: Modern web interface
-- **Real-time Chat**: Interactive conversation experience
+- **Backend**: FastAPI, Groq LLM, Google Calendar API, Langchain
+- **Frontend**: Streamlit with real-time chat interface
 
 ## 📋 Prerequisites
 
@@ -52,7 +45,7 @@ Create a `.env` file in the backend directory:
 
 ```bash
 cd backend
-cp env_example.txt .env
+cp env.example .env
 ```
 
 Add your API keys to `.env`:
@@ -74,12 +67,6 @@ ANTHROPIC_API_KEY=your_anthropic_api_key
 
 ### 4. Start the Application
 
-#### Option 1: Quick Start Script
-```bash
-./start.sh
-```
-
-#### Option 2: Manual Start
 ```bash
 # Terminal 1: Start Backend
 cd backend
@@ -101,7 +88,7 @@ streamlit run app.py
 ### Booking Meetings
 ```
 User: "Book a meeting tomorrow at 3pm called Team Standup"
-Bot: "✅ Successfully booked 'Team Standup' for tomorrow at 3pm. The meeting has been added to your Google Calendar."
+Bot: "✅ Successfully booked 'Team Standup' for tomorrow at 3pm."
 ```
 
 ### Checking Schedule
@@ -112,44 +99,23 @@ Bot: "📅 Here's what's on your schedule today:
 • 05:00 PM: football"
 ```
 
-### Checking Availability
-```
-User: "Is 2pm tomorrow available?"
-Bot: "2pm on tomorrow is not available. Please choose another time."
-```
+## 🚀 Deployment
 
-## 🔧 API Endpoints
+This project is optimized for **Render** deployment. See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) for detailed step-by-step instructions.
 
-### POST /chat
-Main chat endpoint for user interactions.
+### Quick Render Deployment:
+1. **Sign up at [render.com](https://render.com)**
+2. **Connect your GitHub repository**
+3. **Deploy backend** (root directory: `backend`)
+4. **Deploy frontend** (root directory: `frontend`)
+5. **Set environment variables** in Render dashboard
+6. **Test your live application**
 
-**Request:**
-```json
-{
-  "message": "Book a meeting tomorrow at 3pm"
-}
-```
+## 📚 Documentation
 
-**Response:**
-```json
-{
-  "response": "✅ Successfully booked 'Meeting' for tomorrow at 3pm.",
-  "success": true,
-  "error": null
-}
-```
-
-### GET /health
-Health check endpoint.
-
-**Response:**
-```json
-{
-  "status": "healthy",
-  "agent_ready": true,
-  "message": "🤖 Calendar agent is ready to help!"
-}
-```
+- **[PROJECT_SUMMARY.md](PROJECT_SUMMARY.md)**: Detailed project documentation and architecture
+- **[RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md)**: Complete Render deployment guide
+- **[DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md)**: Deployment checklist and troubleshooting
 
 ## 🏗️ Project Structure
 
@@ -166,8 +132,8 @@ assignment chatbot/
 │   └── requirements.txt        # Frontend dependencies
 ├── README.md                   # This file
 ├── PROJECT_SUMMARY.md          # Detailed project documentation
-├── DEPLOYMENT.md              # Deployment guide
-└── start.sh                   # Quick start script
+├── RENDER_DEPLOYMENT.md        # Render deployment guide
+└── DEPLOYMENT_CHECKLIST.md     # Deployment checklist
 ```
 
 ## 🔐 Security
@@ -176,27 +142,6 @@ assignment chatbot/
 - **Environment Variables**: Secure API key management
 - **CORS Configuration**: Controlled frontend-backend communication
 - **Input Validation**: Sanitized user inputs
-
-## 🚀 Deployment
-
-This project is optimized for **Render** deployment. See [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md) for detailed step-by-step instructions.
-
-### Quick Render Deployment:
-1. **Sign up at [render.com](https://render.com)**
-2. **Connect your GitHub repository**
-3. **Deploy backend** (root directory: `backend`)
-4. **Deploy frontend** (root directory: `frontend`)
-5. **Set environment variables** in Render dashboard
-6. **Test your live application**
-
-For detailed instructions, see [RENDER_DEPLOYMENT.md](RENDER_DEPLOYMENT.md).
-
-## 📊 Performance
-
-- **Response Time**: 2-4 seconds for typical queries
-- **LLM Processing**: 1-3 seconds
-- **Calendar Operations**: 0.5-1 second
-- **Uptime**: 99%+ availability
 
 ## 🔮 Future Enhancements
 
@@ -224,7 +169,7 @@ This project is licensed under the MIT License.
 
 For issues and questions:
 1. Check the [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) for detailed documentation
-2. Review the [DEPLOYMENT.md](DEPLOYMENT.md) for deployment help
+2. Review the [DEPLOYMENT_CHECKLIST.md](DEPLOYMENT_CHECKLIST.md) for deployment help
 3. Open an issue in the repository
 
 ---
