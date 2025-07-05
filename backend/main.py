@@ -38,14 +38,25 @@ def initialize_agent():
     """Initialize the calendar booking agent"""
     global agent
     
-    # Get service account file
-    service_account_file = os.getenv("SERVICE_ACCOUNT_FILE", "service_account.json")
+    # Check if service account JSON is provided via environment variable (for Render)
+    service_account_json = os.getenv("SERVICE_ACCOUNT_JSON")
     
-    if not os.path.exists(service_account_file):
-        raise FileNotFoundError(f"Service account file not found: {service_account_file}")
+    if service_account_json:
+        # Use environment variable (Render deployment)
+        print("✅ Using SERVICE_ACCOUNT_JSON from environment variable")
+        agent = SimpleLLMAgent()
+    else:
+        # Use file-based service account (local development)
+        service_account_file = os.getenv("SERVICE_ACCOUNT_FILE", "service_account.json")
+        
+        if not os.path.exists(service_account_file):
+            print(f"⚠️ Service account file not found: {service_account_file}")
+            print("⚠️ Please set SERVICE_ACCOUNT_JSON environment variable or provide service_account.json file")
+            raise FileNotFoundError(f"Service account file not found: {service_account_file}")
+        
+        print(f"✅ Using service account file: {service_account_file}")
+        agent = SimpleLLMAgent(service_account_file)
     
-    # Initialize the Simple LLM agent
-    agent = SimpleLLMAgent(service_account_file)
     print("🚀 Simple LLM Calendar Agent initialized and ready!")
 
 @app.on_event("startup")
