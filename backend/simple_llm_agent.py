@@ -173,26 +173,35 @@ class SimpleLLMAgent:
         """Understand user intent using LLM"""
         try:
             prompt = f"""
-            What is the user's intent in this message: "{user_message}"
+            Analyze this user message and determine their intent: "{user_message}"
             
-            Choose one of:
-            - book_meeting: User wants to book/schedule a NEW meeting (e.g., "book a meeting", "schedule a call")
-            - check_schedule: User wants to see their schedule/events (e.g., "what's my schedule", "show my events")
-            - check_availability: User wants to check if a time is available (e.g., "is 3pm available", "check availability")
-            - general_chat: General conversation or questions
+            Choose the most appropriate intent:
             
-            Return only the intent category, nothing else.
+            1. book_meeting - User wants to SCHEDULE/CREATE a NEW meeting (e.g., "book a meeting", "schedule a call", "set up a meeting")
+            2. check_schedule - User wants to SEE their EXISTING schedule/events (e.g., "what's my schedule", "show my events", "what do I have today")
+            3. check_availability - User wants to CHECK if a specific time is FREE (e.g., "is 3pm available", "check if 2pm is free")
+            4. general_chat - General conversation or questions
+            
+            Examples:
+            - "Book a meeting tomorrow at 3pm" → book_meeting
+            - "What's my schedule today?" → check_schedule  
+            - "Show my events tomorrow" → check_schedule
+            - "Is 2pm tomorrow free?" → check_availability
+            - "Check if 3pm is available" → check_availability
+            - "Hello" → general_chat
+            
+            Return ONLY the intent category (book_meeting, check_schedule, check_availability, or general_chat).
             """
             
             response = self.llm_client.generate(prompt)
             intent = response.strip().lower()
             
             # Map to our intent categories
-            if "book" in intent or "schedule" in intent:
+            if "book" in intent or "schedule" in intent or "set up" in intent:
                 return "book_meeting"
-            elif "schedule" in intent or "events" in intent or "what" in intent:
+            elif "schedule" in intent or "events" in intent or "what" in intent or "show" in intent:
                 return "check_schedule"
-            elif "available" in intent or "check" in intent:
+            elif "available" in intent or "check" in intent or "free" in intent:
                 return "check_availability"
             else:
                 return "general_chat"
@@ -203,9 +212,9 @@ class SimpleLLMAgent:
             user_lower = user_message.lower()
             if "book" in user_lower or "schedule" in user_lower:
                 return "book_meeting"
-            elif "schedule" in user_lower or "events" in user_lower or "what" in user_lower:
+            elif "schedule" in user_lower or "events" in user_lower or "what" in user_lower or "show" in user_lower:
                 return "check_schedule"
-            elif "available" in user_lower:
+            elif "available" in user_lower or "free" in user_lower:
                 return "check_availability"
             else:
                 return "general_chat"
@@ -319,7 +328,7 @@ class SimpleLLMAgent:
         """Extract date from user message"""
         user_lower = user_message.lower()
         
-        # Simple date extraction
+        # Simple date extraction with more patterns
         if "today" in user_lower:
             return "today"
         elif "tomorrow" in user_lower:
@@ -341,13 +350,37 @@ class SimpleLLMAgent:
         elif "next sunday" in user_lower:
             return "next sunday"
         else:
-            # Try to extract date using LLM
-            prompt = f"Extract only the date from this message: '{user_message}'. Return only the date, nothing else."
+            # Try to extract date using LLM with better prompt
+            prompt = f"""
+            Extract ONLY the date from this message: "{user_message}"
+            
+            Return ONLY the date in one of these formats:
+            - today
+            - tomorrow  
+            - next monday
+            - next tuesday
+            - next wednesday
+            - next thursday
+            - next friday
+            - next saturday
+            - next sunday
+            - next week
+            
+            If no date is found, return "today" as default.
+            Return ONLY the date, nothing else.
+            """
             try:
                 response = self.llm_client.generate(prompt)
-                return response.strip()
+                date = response.strip().lower()
+                # Validate the response
+                valid_dates = ["today", "tomorrow", "next monday", "next tuesday", "next wednesday", 
+                              "next thursday", "next friday", "next saturday", "next sunday", "next week"]
+                if date in valid_dates:
+                    return date
+                else:
+                    return "today"  # Default fallback
             except:
-                return None
+                return "today"  # Default fallback
 
     def _extract_time_from_message(self, user_message: str) -> str:
         """Extract time from user message"""
@@ -374,16 +407,28 @@ class SimpleLLMAgent:
             if not date_str:
                 return "Please specify which date you'd like to see your schedule for."
             
+            print(f"🔍 Extracted date: {date_str}")
+            
             # Parse the date
             try:
-                parsed_date = self.calendar_manager.parse_combined_datetime(date_str)
-            except:
+                # For simple dates like "today", "tomorrow", we need to create a proper datetime
+                if date_str == "today":
+                    parsed_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                elif date_str == "tomorrow":
+                    parsed_date = (datetime.now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                else:
+                    # Try combined parsing for other formats
+                    parsed_date = self.calendar_manager.parse_combined_datetime(date_str)
+            except Exception as e:
+                print(f"Date parsing error: {e}")
                 # Fallback to simple date parsing
                 try:
                     parsed_date = self.calendar_manager.parse_date_time(date_str)
-                except Exception as e:
-                    print(f"Date parsing error: {e}")
-                    return "I couldn't understand the date format. Please try again."
+                except Exception as e2:
+                    print(f"Fallback date parsing error: {e2}")
+                    return f"I couldn't understand the date '{date_str}'. Please try 'today', 'tomorrow', or 'next monday'."
+            
+            print(f"📅 Parsed date: {parsed_date}")
             
             # Get events for the date
             events = self.calendar_manager.get_events_for_date(parsed_date)
