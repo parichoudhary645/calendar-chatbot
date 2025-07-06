@@ -386,42 +386,62 @@ class SimpleLLMAgent:
         elif "next sunday" in user_lower:
             return "next sunday"
         else:
-            # Try to extract date using LLM with better prompt
-            prompt = f"""
-            Extract ONLY the date from this message: "{user_message}"
+            # Try to extract specific dates like "9 July", "July 9", etc.
+            import re
+            date_patterns = [
+                r'(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)',
+                r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})'
+            ]
             
-            Return ONLY the date in one of these formats:
-            - today
-            - tomorrow  
-            - next monday
-            - next tuesday
-            - next wednesday
-            - next thursday
-            - next friday
-            - next saturday
-            - next sunday
-            - next week
-            
-            Examples:
-            - "Find available slots for next Monday" → next monday
-            - "What's my schedule tomorrow" → tomorrow
-            - "Show me today's events" → today
-            
-            If no date is found, return "today" as default.
-            Return ONLY the date, nothing else.
-            """
-            try:
-                response = self.llm_client.generate(prompt)
-                date = response.strip().lower()
-                # Validate the response
-                valid_dates = ["today", "tomorrow", "next monday", "next tuesday", "next wednesday", 
-                              "next thursday", "next friday", "next saturday", "next sunday", "next week"]
-                if date in valid_dates:
-                    return date
-                else:
-                    return "today"  # Default fallback
-            except:
+            for pattern in date_patterns:
+                match = re.search(pattern, user_lower)
+                if match:
+                    if match.group(1).isdigit():
+                        # Format: "9 July"
+                        day = match.group(1)
+                        month = match.group(2)
+                    else:
+                        # Format: "July 9"
+                        month = match.group(1)
+                        day = match.group(2)
+                    return f"{day} {month}"
+        
+        # Try to extract date using LLM with better prompt
+        prompt = f"""
+        Extract ONLY the date from this message: "{user_message}"
+        
+        Return ONLY the date in one of these formats:
+        - today
+        - tomorrow  
+        - next monday
+        - next tuesday
+        - next wednesday
+        - next thursday
+        - next friday
+        - next saturday
+        - next sunday
+        - next week
+        
+        Examples:
+        - "Find available slots for next Monday" → next monday
+        - "What's my schedule tomorrow" → tomorrow
+        - "Show me today's events" → today
+        
+        If no date is found, return "today" as default.
+        Return ONLY the date, nothing else.
+        """
+        try:
+            response = self.llm_client.generate(prompt)
+            date = response.strip().lower()
+            # Validate the response
+            valid_dates = ["today", "tomorrow", "next monday", "next tuesday", "next wednesday", 
+                          "next thursday", "next friday", "next saturday", "next sunday", "next week"]
+            if date in valid_dates:
+                return date
+            else:
                 return "today"  # Default fallback
+        except:
+            return "today"  # Default fallback
 
     def _extract_time_from_message(self, user_message: str) -> str:
         """Extract time from user message"""

@@ -200,9 +200,9 @@ class CalendarManager:
                 # Try to parse as a specific date
                 try:
                     # Try different date formats
-                    for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d", "%b %d"]:
+                    for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d", "%b %d", "%d %B", "%d %b"]:
                         try:
-                            if fmt in ["%B %d", "%b %d"]:
+                            if fmt in ["%B %d", "%b %d", "%d %B", "%d %b"]:
                                 # Add current year for month/day formats
                                 date_with_year = f"{date_str} {now.year}"
                                 target_date = datetime.strptime(date_with_year, f"{fmt} %Y").date()
@@ -303,6 +303,35 @@ class CalendarManager:
         try:
             return parser.parse(datetime_str)
         except:
+            # Try to handle "Wednesday 9 July at 4pm" format
+            import re
+            day_match = re.search(r'(monday|tuesday|wednesday|thursday|friday|saturday|sunday)', datetime_str.lower())
+            date_match = re.search(r'(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)', datetime_str.lower())
+            time_match = re.search(r'(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)', datetime_str.lower())
+            
+            if day_match and date_match and time_match:
+                day_name = day_match.group(1)
+                day_num = date_match.group(1)
+                month_name = date_match.group(2)
+                time_str = time_match.group(1)
+                
+                # Create date string
+                current_year = datetime.now().year
+                date_str = f"{day_num} {month_name} {current_year}"
+                
+                try:
+                    # Parse the date
+                    date_obj = datetime.strptime(date_str, "%d %B %Y")
+                    
+                    # If the date has passed, use next year
+                    if date_obj < datetime.now():
+                        date_obj = datetime.strptime(f"{day_num} {month_name} {current_year + 1}", "%d %B %Y")
+                    
+                    # Combine with time
+                    return self._combine_date_and_time(date_obj, time_str)
+                except:
+                    pass
+            
             raise ValueError(f"Could not parse datetime: {datetime_str}")
     
     def _combine_date_and_time(self, date_obj: datetime, time_str: str) -> datetime:
