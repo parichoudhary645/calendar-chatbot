@@ -200,7 +200,7 @@ class SimpleLLMAgent:
             
             1. book_meeting - User wants to SCHEDULE/CREATE a NEW meeting (e.g., "book a meeting", "schedule a call", "set up a meeting", "create an event")
             2. check_schedule - User wants to SEE their EXISTING schedule/events (e.g., "what's my schedule", "show my events", "what do I have today", "my schedule today")
-            3. check_availability - User wants to CHECK if a specific time is FREE (e.g., "is 3pm available", "check if 2pm is free", "is tomorrow at 3pm free")
+            3. check_availability - User wants to CHECK availability (e.g., "is 3pm available", "check if 2pm is free", "find available slots", "show me free times")
             4. general_chat - General conversation or questions
             
             Key differences:
@@ -239,13 +239,16 @@ class SimpleLLMAgent:
             # Fallback to simple keyword matching
             user_lower = user_message.lower()
             
-            # Check for schedule queries first (more specific)
-            if any(word in user_lower for word in ["what's my schedule", "show my schedule", "my schedule", "what do i have", "show my events", "my events"]):
+            # Check for available slots queries first (most specific)
+            if any(phrase in user_lower for phrase in ["find available", "available slots", "free slots", "open slots"]):
+                return "check_availability"
+            # Check for schedule queries
+            elif any(word in user_lower for word in ["what's my schedule", "show my schedule", "my schedule", "what do i have", "show my events", "my events"]):
                 return "check_schedule"
             # Check for booking requests
             elif any(word in user_lower for word in ["book", "schedule a", "set up", "create meeting", "add meeting"]):
                 return "book_meeting"
-            # Check for availability queries
+            # Check for general availability queries
             elif any(word in user_lower for word in ["available", "free", "check if"]):
                 return "check_availability"
             else:
@@ -267,13 +270,13 @@ class SimpleLLMAgent:
             elif intent == "check_schedule":
                 return self._handle_schedule(user_message)
             elif intent == "check_availability":
-                return self._handle_availability(user_message)
-            else:
-                # Check for "find available slots" queries
+                # Check if this is a "find available slots" query
                 if any(phrase in user_message.lower() for phrase in ["find available", "available slots", "free slots", "open slots"]):
                     return self._handle_available_slots(user_message)
                 else:
-                    return self._handle_general_chat(user_message)
+                    return self._handle_availability(user_message)
+            else:
+                return self._handle_general_chat(user_message)
                 
         except Exception as e:
             print(f"Error in chat: {e}")
