@@ -95,7 +95,7 @@ class SimpleLLMAgent:
             Return only the extracted information in this format:
             - date: (extracted date like "tomorrow", "today", "2024-01-15")
             - time: (extracted time like "3pm", "15:00")
-            - title: (extracted meeting title)
+            - title: (extracted meeting title or "Meeting" if none found)
             
             If any information is missing, use "None". Only return the extracted info, no other text.
             """
@@ -114,13 +114,60 @@ class SimpleLLMAgent:
                 elif 'time:' in line.lower():
                     info['time'] = line.split(':', 1)[1].strip()
                 elif 'title:' in line.lower():
-                    info['title'] = line.split(':', 1)[1].strip()
+                    title = line.split(':', 1)[1].strip()
+                    info['title'] = title if title.lower() != "none" else "Meeting"
+            
+            # Fallback title extraction if LLM didn't find one
+            if not info['title'] or info['title'].lower() == "none":
+                # Try to extract title from the message
+                user_lower = user_message.lower()
+                if "called" in user_lower:
+                    # Extract title after "called"
+                    called_index = user_lower.find("called")
+                    title_part = user_message[called_index + 6:].strip()
+                    if title_part:
+                        info['title'] = title_part.split()[0]  # Take first word as title
+                elif "dinner" in user_lower:
+                    info['title'] = "Dinner"
+                elif "lunch" in user_lower:
+                    info['title'] = "Lunch"
+                elif "meeting" in user_lower:
+                    info['title'] = "Meeting"
+                else:
+                    info['title'] = "Meeting"  # Default title
             
             return info
             
         except Exception as e:
             print(f"Error extracting booking info: {e}")
-            return {"date": None, "time": None, "title": None}
+            # Fallback extraction
+            info = {"date": None, "time": None, "title": "Meeting"}
+            
+            # Simple keyword extraction
+            user_lower = user_message.lower()
+            if "tomorrow" in user_lower:
+                info['date'] = "tomorrow"
+            elif "today" in user_lower:
+                info['date'] = "today"
+            
+            # Extract time
+            import re
+            time_match = re.search(r'(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)', user_lower)
+            if time_match:
+                info['time'] = time_match.group(1)
+            
+            # Extract title
+            if "dinner" in user_lower:
+                info['title'] = "Dinner"
+            elif "lunch" in user_lower:
+                info['title'] = "Lunch"
+            elif "called" in user_lower:
+                called_index = user_lower.find("called")
+                title_part = user_message[called_index + 6:].strip()
+                if title_part:
+                    info['title'] = title_part.split()[0]
+            
+            return info
     
     def _understand_intent(self, user_message: str) -> str:
         """Understand user intent using LLM"""
@@ -279,6 +326,20 @@ class SimpleLLMAgent:
             return "tomorrow"
         elif "next week" in user_lower:
             return "next week"
+        elif "next monday" in user_lower:
+            return "next monday"
+        elif "next tuesday" in user_lower:
+            return "next tuesday"
+        elif "next wednesday" in user_lower:
+            return "next wednesday"
+        elif "next thursday" in user_lower:
+            return "next thursday"
+        elif "next friday" in user_lower:
+            return "next friday"
+        elif "next saturday" in user_lower:
+            return "next saturday"
+        elif "next sunday" in user_lower:
+            return "next sunday"
         else:
             # Try to extract date using LLM
             prompt = f"Extract only the date from this message: '{user_message}'. Return only the date, nothing else."
@@ -314,9 +375,15 @@ class SimpleLLMAgent:
                 return "Please specify which date you'd like to see your schedule for."
             
             # Parse the date
-            parsed_date = self.calendar_manager.parse_date_time(date_str)
-            if not parsed_date:
-                return "I couldn't understand the date format. Please try again."
+            try:
+                parsed_date = self.calendar_manager.parse_combined_datetime(date_str)
+            except:
+                # Fallback to simple date parsing
+                try:
+                    parsed_date = self.calendar_manager.parse_date_time(date_str)
+                except Exception as e:
+                    print(f"Date parsing error: {e}")
+                    return "I couldn't understand the date format. Please try again."
             
             # Get events for the date
             events = self.calendar_manager.get_events_for_date(parsed_date)
