@@ -110,12 +110,33 @@ class SimpleLLMAgent:
             lines = response.strip().split('\n')
             for line in lines:
                 if 'date:' in line.lower():
-                    info['date'] = line.split(':', 1)[1].strip()
+                    date_val = line.split(':', 1)[1].strip()
+                    info['date'] = date_val if date_val.lower() != "none" else None
                 elif 'time:' in line.lower():
-                    info['time'] = line.split(':', 1)[1].strip()
+                    time_val = line.split(':', 1)[1].strip()
+                    info['time'] = time_val if time_val.lower() != "none" else None
                 elif 'title:' in line.lower():
                     title = line.split(':', 1)[1].strip()
                     info['title'] = title if title.lower() != "none" else "Meeting"
+            
+            # Fallback extraction if LLM didn't find date/time
+            if not info['date'] or not info['time']:
+                # Extract from the original message
+                user_lower = user_message.lower()
+                
+                # Extract date
+                if not info['date']:
+                    if "tomorrow" in user_lower:
+                        info['date'] = "tomorrow"
+                    elif "today" in user_lower:
+                        info['date'] = "today"
+                
+                # Extract time
+                if not info['time']:
+                    import re
+                    time_match = re.search(r'(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)', user_lower)
+                    if time_match:
+                        info['time'] = time_match.group(1)
             
             # Fallback title extraction if LLM didn't find one
             if not info['title'] or info['title'].lower() == "none":
@@ -385,6 +406,7 @@ class SimpleLLMAgent:
     def _extract_time_from_message(self, user_message: str) -> str:
         """Extract time from user message"""
         # Simple time extraction
+        import re
         time_pattern = r'\b(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)\b'
         matches = re.findall(time_pattern, user_message.lower())
         if matches:

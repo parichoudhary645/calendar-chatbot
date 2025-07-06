@@ -4,7 +4,7 @@ This module handles all interactions with Google Calendar API
 """
 
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, time
 from typing import List, Dict, Optional, Tuple
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -162,43 +162,116 @@ class CalendarManager:
         return f"{start_str} - {end_str}"
     
     def parse_date_time(self, date_str: str, time_str: str = None) -> datetime:
-        """
-        Parse date and time strings into datetime objects
-        Handles various formats like "tomorrow", "next Monday", etc.
-        """
-        from dateutil import parser
-        from dateutil.relativedelta import relativedelta
-        
-        today = datetime.now()
-        
-        # Handle relative dates
-        if date_str.lower() == "today":
-            date_obj = today
-        elif date_str.lower() == "tomorrow":
-            date_obj = today + timedelta(days=1)
-        elif date_str.lower().startswith("next "):
-            # Handle "next Monday", "next Tuesday", etc.
-            day_name = date_str.lower().replace("next ", "")
-            days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday']
-            if day_name in days:
-                target_day = days.index(day_name)
-                current_day = today.weekday()
-                days_ahead = target_day - current_day
-                if days_ahead <= 0:  # Target day already passed this week
-                    days_ahead += 7
-                date_obj = today + timedelta(days=days_ahead)
+        """Parse date and time strings into a datetime object"""
+        try:
+            # Handle None values
+            if not date_str:
+                raise ValueError("Date string is None or empty")
+            
+            date_str = date_str.strip().lower()
+            
+            # Get current date
+            now = datetime.now()
+            
+            # Parse date
+            if date_str == "today":
+                target_date = now.date()
+            elif date_str == "tomorrow":
+                target_date = now.date() + timedelta(days=1)
+            elif date_str == "next week":
+                target_date = now.date() + timedelta(days=7)
+            elif date_str.startswith("next "):
+                # Handle "next monday", "next tuesday", etc.
+                day_name = date_str[5:]  # Remove "next "
+                day_map = {
+                    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+                    "friday": 4, "saturday": 5, "sunday": 6
+                }
+                if day_name in day_map:
+                    target_day = day_map[day_name]
+                    current_day = now.weekday()
+                    days_ahead = target_day - current_day
+                    if days_ahead <= 0:  # Target day already happened this week
+                        days_ahead += 7
+                    target_date = now.date() + timedelta(days=days_ahead)
+                else:
+                    raise ValueError(f"Unknown day: {day_name}")
             else:
-                date_obj = parser.parse(date_str)
-        else:
-            # Try to parse as regular date
-            date_obj = parser.parse(date_str)
-        
-        # If time is provided, combine with date
-        if time_str:
-            time_obj = parser.parse(time_str)
-            date_obj = date_obj.replace(hour=time_obj.hour, minute=time_obj.minute)
-        
-        return date_obj
+                # Try to parse as a specific date
+                try:
+                    # Try different date formats
+                    for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d", "%b %d"]:
+                        try:
+                            if fmt in ["%B %d", "%b %d"]:
+                                # Add current year for month/day formats
+                                date_with_year = f"{date_str} {now.year}"
+                                target_date = datetime.strptime(date_with_year, f"{fmt} %Y").date()
+                                # If the date has passed, use next year
+                                if target_date < now.date():
+                                    target_date = datetime.strptime(f"{date_str} {now.year + 1}", f"{fmt} %Y").date()
+                                break
+                            else:
+                                target_date = datetime.strptime(date_str, fmt).date()
+                                break
+                        except ValueError:
+                            continue
+                    else:
+                        raise ValueError(f"Could not parse date: {date_str}")
+                except Exception as e:
+                    print(f"Date parsing error: {e}")
+                    # Default to today if parsing fails
+                    target_date = now.date()
+            
+            # Parse time
+            if time_str:
+                time_str = time_str.strip().lower()
+                try:
+                    # Try different time formats
+                    for fmt in ["%I:%M %p", "%I %p", "%H:%M", "%H"]:
+                        try:
+                            if fmt in ["%I %p", "%H"]:
+                                # Add minutes for hour-only formats
+                                time_with_minutes = f"{time_str}:00"
+                                if fmt == "%I %p":
+                                    time_with_minutes = f"{time_str}:00"
+                                else:
+                                    time_with_minutes = f"{time_str}:00"
+                                target_time = datetime.strptime(time_with_minutes, "%H:%M").time()
+                                break
+                            else:
+                                target_time = datetime.strptime(time_str, fmt).time()
+                                break
+                        except ValueError:
+                            continue
+                    else:
+                        # Try simple hour extraction
+                        import re
+                        hour_match = re.search(r'(\d{1,2})', time_str)
+                        if hour_match:
+                            hour = int(hour_match.group(1))
+                            if "pm" in time_str and hour != 12:
+                                hour += 12
+                            elif "am" in time_str and hour == 12:
+                                hour = 0
+                            target_time = time(hour=hour, minute=0)
+                        else:
+                            # Default to current time
+                            target_time = now.time()
+                except Exception as e:
+                    print(f"Time parsing error: {e}")
+                    # Default to current time if parsing fails
+                    target_time = now.time()
+            else:
+                # Default to current time if no time provided
+                target_time = now.time()
+            
+            # Combine date and time
+            return datetime.combine(target_date, target_time)
+            
+        except Exception as e:
+            print(f"Date/time parsing error: {e}")
+            # Return current time as fallback
+            return datetime.now()
     
     def parse_combined_datetime(self, datetime_str: str) -> datetime:
         """
