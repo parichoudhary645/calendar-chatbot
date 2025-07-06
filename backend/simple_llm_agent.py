@@ -198,15 +198,22 @@ class SimpleLLMAgent:
             
             Choose the most appropriate intent:
             
-            1. book_meeting - User wants to SCHEDULE/CREATE a NEW meeting (e.g., "book a meeting", "schedule a call", "set up a meeting")
-            2. check_schedule - User wants to SEE their EXISTING schedule/events (e.g., "what's my schedule", "show my events", "what do I have today")
-            3. check_availability - User wants to CHECK if a specific time is FREE (e.g., "is 3pm available", "check if 2pm is free")
+            1. book_meeting - User wants to SCHEDULE/CREATE a NEW meeting (e.g., "book a meeting", "schedule a call", "set up a meeting", "create an event")
+            2. check_schedule - User wants to SEE their EXISTING schedule/events (e.g., "what's my schedule", "show my events", "what do I have today", "my schedule today")
+            3. check_availability - User wants to CHECK if a specific time is FREE (e.g., "is 3pm available", "check if 2pm is free", "is tomorrow at 3pm free")
             4. general_chat - General conversation or questions
+            
+            Key differences:
+            - book_meeting: User wants to CREATE a new meeting/event
+            - check_schedule: User wants to SEE existing events/schedule
+            - check_availability: User wants to CHECK if a time slot is free
             
             Examples:
             - "Book a meeting tomorrow at 3pm" → book_meeting
+            - "Schedule a call today" → book_meeting
             - "What's my schedule today?" → check_schedule  
             - "Show my events tomorrow" → check_schedule
+            - "My schedule today" → check_schedule
             - "Is 2pm tomorrow free?" → check_availability
             - "Check if 3pm is available" → check_availability
             - "Hello" → general_chat
@@ -218,11 +225,11 @@ class SimpleLLMAgent:
             intent = response.strip().lower()
             
             # Map to our intent categories
-            if "book" in intent or "schedule" in intent or "set up" in intent:
+            if "book_meeting" in intent:
                 return "book_meeting"
-            elif "schedule" in intent or "events" in intent or "what" in intent or "show" in intent:
+            elif "check_schedule" in intent:
                 return "check_schedule"
-            elif "available" in intent or "check" in intent or "free" in intent:
+            elif "check_availability" in intent:
                 return "check_availability"
             else:
                 return "general_chat"
@@ -231,11 +238,15 @@ class SimpleLLMAgent:
             print(f"Error understanding intent: {e}")
             # Fallback to simple keyword matching
             user_lower = user_message.lower()
-            if "book" in user_lower or "schedule" in user_lower:
-                return "book_meeting"
-            elif "schedule" in user_lower or "events" in user_lower or "what" in user_lower or "show" in user_lower:
+            
+            # Check for schedule queries first (more specific)
+            if any(word in user_lower for word in ["what's my schedule", "show my schedule", "my schedule", "what do i have", "show my events", "my events"]):
                 return "check_schedule"
-            elif "available" in user_lower or "free" in user_lower:
+            # Check for booking requests
+            elif any(word in user_lower for word in ["book", "schedule a", "set up", "create meeting", "add meeting"]):
+                return "book_meeting"
+            # Check for availability queries
+            elif any(word in user_lower for word in ["available", "free", "check if"]):
                 return "check_availability"
             else:
                 return "general_chat"
