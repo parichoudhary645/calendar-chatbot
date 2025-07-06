@@ -388,6 +388,21 @@ class SimpleLLMAgent:
             return "next saturday"
         elif "next sunday" in user_lower:
             return "next sunday"
+        # Handle day names without "next" (e.g., "monday", "wednesday")
+        elif "monday" in user_lower:
+            return "next monday"
+        elif "tuesday" in user_lower:
+            return "next tuesday"
+        elif "wednesday" in user_lower:
+            return "next wednesday"
+        elif "thursday" in user_lower:
+            return "next thursday"
+        elif "friday" in user_lower:
+            return "next friday"
+        elif "saturday" in user_lower:
+            return "next saturday"
+        elif "sunday" in user_lower:
+            return "next sunday"
         else:
             # Try to extract specific dates like "9 July", "July 9", etc.
             import re
@@ -429,6 +444,8 @@ class SimpleLLMAgent:
         - "Find available slots for next Monday" → next monday
         - "What's my schedule tomorrow" → tomorrow
         - "Show me today's events" → today
+        - "What's my schedule monday" → next monday
+        - "Find available slots for wednesday" → next wednesday
         
         If no date is found, return "today" as default.
         Return ONLY the date, nothing else.
