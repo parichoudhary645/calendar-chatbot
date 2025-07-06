@@ -198,4 +198,55 @@ class CalendarManager:
             time_obj = parser.parse(time_str)
             date_obj = date_obj.replace(hour=time_obj.hour, minute=time_obj.minute)
         
-        return date_obj 
+        return date_obj
+    
+    def parse_combined_datetime(self, datetime_str: str) -> datetime:
+        """
+        Parse combined date-time strings like "tomorrow 3pm", "today 2:30pm", etc.
+        """
+        from dateutil import parser
+        import re
+        
+        today = datetime.now()
+        datetime_str = datetime_str.lower().strip()
+        
+        # Handle common patterns
+        if "tomorrow" in datetime_str:
+            # Extract time from "tomorrow 3pm" or "tomorrow at 3pm"
+            time_match = re.search(r'tomorrow\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)', datetime_str)
+            if time_match:
+                time_str = time_match.group(1)
+                date_obj = today + timedelta(days=1)
+                return self._combine_date_and_time(date_obj, time_str)
+        
+        elif "today" in datetime_str:
+            # Extract time from "today 3pm" or "today at 3pm"
+            time_match = re.search(r'today\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?)', datetime_str)
+            if time_match:
+                time_str = time_match.group(1)
+                return self._combine_date_and_time(today, time_str)
+        
+        # Try to parse as regular datetime
+        try:
+            return parser.parse(datetime_str)
+        except:
+            raise ValueError(f"Could not parse datetime: {datetime_str}")
+    
+    def _combine_date_and_time(self, date_obj: datetime, time_str: str) -> datetime:
+        """
+        Combine a date object with a time string
+        """
+        from dateutil import parser
+        
+        # Parse the time string
+        time_obj = parser.parse(time_str)
+        
+        # Combine date and time
+        combined = date_obj.replace(
+            hour=time_obj.hour,
+            minute=time_obj.minute,
+            second=0,
+            microsecond=0
+        )
+        
+        return combined 

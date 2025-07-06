@@ -201,18 +201,26 @@ class SimpleLLMAgent:
             if not date_str or not time_str:
                 return "I need more information to book your meeting. Please provide a date and time."
             
-            # Parse the date
-            parsed_date = self.calendar_manager.parse_date_time(f"{date_str} {time_str}")
-            if not parsed_date:
-                return "I couldn't understand the date or time. Please try again with a clearer format."
+            # Try to parse the combined date-time string
+            try:
+                # First try combined parsing
+                combined_str = f"{date_str} {time_str}"
+                parsed_date = self.calendar_manager.parse_combined_datetime(combined_str)
+            except:
+                # Fallback to separate parsing
+                try:
+                    parsed_date = self.calendar_manager.parse_date_time(date_str, time_str)
+                except Exception as e:
+                    print(f"Date parsing error: {e}")
+                    return "I couldn't understand the date or time. Please try again with a clearer format like 'tomorrow at 3pm' or 'today 2:30pm'."
             
             # Check availability
-            if not self.calendar_manager.check_availability(parsed_date):
+            if not self.calendar_manager.check_availability(parsed_date, parsed_date + timedelta(hours=1)):
                 return f"{time_str} on {date_str} is not available. Please choose another time."
             
             # Create the event
             event = self.calendar_manager.create_event(
-                title=title,
+                summary=title,
                 start_time=parsed_date,
                 end_time=parsed_date + timedelta(hours=1)
             )
@@ -236,13 +244,20 @@ class SimpleLLMAgent:
             if not date_str or not time_str:
                 return "Please specify a date and time to check availability."
             
-            # Parse the date and time
-            parsed_date = self.calendar_manager.parse_date_time(f"{date_str} {time_str}")
-            if not parsed_date:
-                return "I couldn't understand the date or time format. Please try again."
+            # Try to parse the combined date-time string
+            try:
+                combined_str = f"{date_str} {time_str}"
+                parsed_date = self.calendar_manager.parse_combined_datetime(combined_str)
+            except:
+                # Fallback to separate parsing
+                try:
+                    parsed_date = self.calendar_manager.parse_date_time(date_str, time_str)
+                except Exception as e:
+                    print(f"Date parsing error: {e}")
+                    return "I couldn't understand the date or time format. Please try again."
             
             # Check availability
-            is_available = self.calendar_manager.check_availability(parsed_date)
+            is_available = self.calendar_manager.check_availability(parsed_date, parsed_date + timedelta(hours=1))
             
             if is_available:
                 return f"✅ {time_str} on {date_str} is available!"
