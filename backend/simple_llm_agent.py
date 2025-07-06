@@ -269,7 +269,11 @@ class SimpleLLMAgent:
             elif intent == "check_availability":
                 return self._handle_availability(user_message)
             else:
-                return self._handle_general_chat(user_message)
+                # Check for "find available slots" queries
+                if any(phrase in user_message.lower() for phrase in ["find available", "available slots", "free slots", "open slots"]):
+                    return self._handle_available_slots(user_message)
+                else:
+                    return self._handle_general_chat(user_message)
                 
         except Exception as e:
             print(f"Error in chat: {e}")
@@ -398,6 +402,11 @@ class SimpleLLMAgent:
             - next sunday
             - next week
             
+            Examples:
+            - "Find available slots for next Monday" → next monday
+            - "What's my schedule tomorrow" → tomorrow
+            - "Show me today's events" → today
+            
             If no date is found, return "today" as default.
             Return ONLY the date, nothing else.
             """
@@ -484,6 +493,55 @@ class SimpleLLMAgent:
         except Exception as e:
             print(f"Error checking schedule: {e}")
             return "I encountered an error while checking your schedule. Please try again."
+
+    def _handle_available_slots(self, user_message: str) -> str:
+        """Handle requests to find available time slots"""
+        try:
+            # Extract date from message
+            date_str = self._extract_date_from_message(user_message)
+            
+            if not date_str:
+                return "Please specify which date you'd like to find available slots for (e.g., 'tomorrow', 'next monday')."
+            
+            print(f"🔍 Looking for available slots on: {date_str}")
+            
+            # Parse the date
+            try:
+                if date_str == "today":
+                    parsed_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+                elif date_str == "tomorrow":
+                    parsed_date = (datetime.now() + timedelta(days=1)).replace(hour=0, minute=0, second=0, microsecond=0)
+                else:
+                    # Try combined parsing for other formats
+                    parsed_date = self.calendar_manager.parse_combined_datetime(date_str)
+            except Exception as e:
+                print(f"Date parsing error: {e}")
+                # Fallback to simple date parsing
+                try:
+                    parsed_date = self.calendar_manager.parse_date_time(date_str)
+                except Exception as e2:
+                    print(f"Fallback date parsing error: {e2}")
+                    return f"I couldn't understand the date '{date_str}'. Please try 'today', 'tomorrow', or 'next monday'."
+            
+            print(f"📅 Parsed date for available slots: {parsed_date}")
+            
+            # Get available slots (business hours: 9 AM to 6 PM, 1-hour slots)
+            available_slots = self.calendar_manager.get_available_slots(parsed_date, duration_minutes=60)
+            
+            if not available_slots:
+                return f"❌ No available 1-hour slots found for {date_str} during business hours (9 AM - 6 PM)."
+            
+            # Format the response
+            response = f"📅 Available 1-hour slots for {date_str}:\n"
+            for start_time, end_time in available_slots:
+                time_slot = self.calendar_manager.format_time_slot(start_time, end_time)
+                response += f"• {time_slot}\n"
+            
+            return response
+            
+        except Exception as e:
+            print(f"Error finding available slots: {e}")
+            return "I encountered an error while finding available slots. Please try again."
 
     def _handle_general_chat(self, user_message: str) -> str:
         """Handle general chat and questions"""
