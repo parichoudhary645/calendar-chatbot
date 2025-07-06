@@ -200,9 +200,9 @@ class CalendarManager:
                 # Try to parse as a specific date
                 try:
                     # Try different date formats
-                    for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d", "%b %d", "%d %B", "%d %b"]:
+                    for fmt in ["%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d", "%b %d", "%d %B", "%d %b", "%d%B", "%B%d"]:
                         try:
-                            if fmt in ["%B %d", "%b %d", "%d %B", "%d %b"]:
+                            if fmt in ["%B %d", "%b %d", "%d %B", "%d %b", "%d%B", "%B%d"]:
                                 # Add current year for month/day formats
                                 date_with_year = f"{date_str} {now.year}"
                                 target_date = datetime.strptime(date_with_year, f"{fmt} %Y").date()

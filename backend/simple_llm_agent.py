@@ -404,11 +404,13 @@ class SimpleLLMAgent:
         elif "sunday" in user_lower:
             return "next sunday"
         else:
-            # Try to extract specific dates like "9 July", "July 9", etc.
+            # Try to extract specific dates like "9 July", "July 9", "24july", etc.
             import re
             date_patterns = [
                 r'(\d{1,2})\s+(january|february|march|april|may|june|july|august|september|october|november|december)',
-                r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})'
+                r'(january|february|march|april|may|june|july|august|september|october|november|december)\s+(\d{1,2})',
+                r'(\d{1,2})(january|february|march|april|may|june|july|august|september|october|november|december)',
+                r'(january|february|march|april|may|june|july|august|september|october|november|december)(\d{1,2})'
             ]
             
             for pattern in date_patterns:
